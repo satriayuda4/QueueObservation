@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue OBservation App</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+</head>
+<body>
+    <div style="margin-top: 50px;" class="ui container">
+
+    <h1 style="margin-top: 50px;" class="ui center aligned header">Queue Observation App</h1>
+    
+    <form class="ui form" action="/add", method='POST'>
+        <div class="field">
+            <label for="title">Todo Title</label>        
+            <div class="ui fluid action input">
+                <input type="text" name="title" placeholder="Search...">
+                <button class="ui blue button" type="submit">Add</button>
+            </div>
+        </div>
+    </form>
+
+    {% for todo in todo_list %}
+    <div class="ui segment">
+        <p class="ui big header"> {{ todo.id }} | {{ todo.title }} </p>
+        <p class="content"> Arrive time : {{ todo.arrive_time }} </p>
+        <p class="content"> Start time : {{ todo.start_time }} </p>
+        <p class="content"> Finish time : {{ todo.fin_time }} </p>
+
+        <div class="ui buttons">
+            <a class="ui blue button" href="/start/{{ todo.id }}">Start</a>
+            <a class="ui blue button" href="/finish/{{ todo.id }}">Finish</a>
+        </div>
+
+    </div>
+    {% endfor %}
+    </div>
+</body>
+</html>
