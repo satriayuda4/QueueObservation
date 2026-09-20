@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 style="margin-top: 20px;" class="ui center aligned header">Database Configuration</h1>
+
+<div class="ui grid stackable" style="margin-top: 10px;">
+    <!-- Left Column: Available Databases -->
+    <div class="ten wide column">
+        <div class="ui raised segment">
+            <h3 class="ui dividing header">
+                <i class="database icon"></i> Available Databases
+            </h3>
+            
+            <table class="ui celled table">
+                <thead>
+                    <tr>
+                        <th>Database File</th>
+                        <th>Status</th>
+                        <th class="center aligned">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for db in databases %}
+                    <tr {% if db == active_db %}class="positive"{% endif %}>
+                        <td>
+                            <strong><i class="hdd outline icon"></i> {{ db }}</strong>
+                        </td>
+                        <td>
+                            {% if db == active_db %}
+                                <span class="ui green label"><i class="check circle icon"></i> Active</span>
+                            {% else %}
+                                <span class="ui grey label">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="center aligned">
+                            {% if db != active_db %}
+                            <div class="ui small buttons">
+                                <form action="{{ url_for('set_database') }}" method="POST" style="display:inline; margin-right: 5px;">
+                                    <input type="hidden" name="db_name" value="{{ db }}">
+                                    <button class="ui tiny primary button" type="submit">
+                                        <i class="check icon"></i> Select
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('delete_database') }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ db }}? All observation data in it will be lost.');">
+                                    <input type="hidden" name="db_name" value="{{ db }}">
+                                    <button class="ui tiny red button" type="submit">
+                                        <i class="trash alternate outline icon"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="ui tiny basic green label">Currently Selected</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Right Column: Create New Database -->
+    <div class="six wide column">
+        <div class="ui raised segment">
+            <h3 class="ui dividing header">
+                <i class="plus circle icon"></i> Create New Database
+            </h3>
+            <form class="ui form" action="{{ url_for('create_database') }}" method="POST">
+                <div class="field">
+                    <label>Database Name</label>
+                    <div class="ui right labeled input">
+                        <input type="text" name="new_db_name" placeholder="e.g. shift_1" required pattern="[a-zA-Z0-9_\-]+">
+                        <div class="ui basic label">.sqlite</div>
+                    </div>
+                    <small class="ui grey text">Letters, numbers, dashes, and underscores only.</small>
+                </div>
+                <div class="field" style="margin-top: 15px;">
+                    <div class="ui checkbox">
+                        <input type="checkbox" name="set_active" value="1" id="set_active" checked>
+                        <label for="set_active">Switch to this database immediately</label>
+                    </div>
+                </div>
+                <button class="ui fluid teal button" type="submit" style="margin-top: 15px;">
+                    <i class="plus icon"></i> Create Database
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

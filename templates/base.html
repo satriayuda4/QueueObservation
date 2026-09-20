@@ -7,37 +7,90 @@
     <title>Queue Observation App</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
 </head>
 <body>
-    <div style="margin-top: 50px;" class="ui container">
-
-    <h1 style="margin-top: 50px;" class="ui center aligned header">Queue Observation App</h1>
-    
-    <form class="ui form" action="/add", method='POST'>
-        <div class="field">
-            <label for="title">Add Subject</label>        
-            <div class="ui fluid action input">
-                <input type="text" name="title" placeholder="Person Properties">
-                <button class="ui blue button" type="submit">Add</button>
+    <div style="margin-top: 30px; margin-bottom: 50px;" class="ui container">
+        
+        <!-- Navigation Menu -->
+        <div class="ui stackable menu">
+            <a class="header item" href="{{ url_for('index') }}">
+                <i class="clock outline icon"></i> Queue Observation
+            </a>
+            <a class="item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                <i class="list icon"></i> Dashboard
+            </a>
+            <a class="item {% if request.endpoint == 'config_page' %}active{% endif %}" href="{{ url_for('config_page') }}">
+                <i class="database icon"></i> Database Config
+            </a>
+            <div class="right menu">
+                <div class="item">
+                    <span class="ui teal label" title="Current Active Database">
+                        <i class="hdd outline icon"></i> {{ active_db }}
+                    </span>
+                </div>
+                <a class="item" href="{{ url_for('export') }}">
+                    <i class="download icon"></i> Export CSV
+                </a>
             </div>
         </div>
-    </form>
 
-    {% for todo in todo_list %}
-    <div class="ui segment">
-        <p class="ui big header"> {{ todo.id }} | {{ todo.title }} </p>
-        <p class="content"> Arrive time : {{ todo.arrive_time }} </p>
-        <p class="content"> Start time : {{ todo.start_time }} </p>
-        <p class="content"> Finish time : {{ todo.fin_time }} </p>
+        <!-- Flashed Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="ui message {% if category == 'error' %}negative{% elif category == 'success' %}positive{% elif category == 'warning' %}warning{% else %}info{% endif %}">
+                        <i class="close icon" onclick="this.parentElement.style.display='none';"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        <div class="ui buttons">
-            <a class="ui blue button" href="/start/{{ todo.id }}">Start</a>
-            <a class="ui blue button" href="/finish/{{ todo.id }}">Finish</a>
+        {% block content %}
+        <h1 style="margin-top: 20px;" class="ui center aligned header">Queue Observation App</h1>
+        
+        <form class="ui form" action="{{ url_for('add') }}" method="POST">
+            <div class="field">
+                <label for="title">Add Subject</label>        
+                <div class="ui fluid action input">
+                    <input type="text" name="title" placeholder="Person Properties" required autofocus>
+                    <button class="ui blue button" type="submit">
+                        <i class="plus icon"></i> Add
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        {% if not todo_list %}
+        <div class="ui placeholder segment center aligned" style="margin-top: 30px;">
+            <div class="ui icon header">
+                <i class="users icon"></i>
+                No subjects currently in this observation queue.
+            </div>
+            <p>Add a subject above to begin observing.</p>
         </div>
+        {% endif %}
 
-    </div>
-    {% endfor %}
+        {% for todo in todo_list %}
+        <div class="ui segment">
+            <p class="ui big header"> #{{ todo.id }} | {{ todo.title }} </p>
+            <p class="content"><strong>Arrive time :</strong> {{ todo.arrive_time if todo.arrive_time else '-' }} </p>
+            <p class="content"><strong>Start time :</strong> {{ todo.start_time if todo.start_time else '-' }} </p>
+            <p class="content"><strong>Finish time :</strong> {{ todo.fin_time if todo.fin_time else '-' }} </p>
+
+            <div class="ui buttons">
+                <a class="ui blue button" href="{{ url_for('start', todo_id=todo.id) }}">
+                    <i class="play icon"></i> Start
+                </a>
+                <a class="ui green button" href="{{ url_for('finish', todo_id=todo.id) }}">
+                    <i class="check icon"></i> Finish
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+        {% endblock %}
     </div>
 </body>
 </html>

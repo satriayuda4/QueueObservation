@@ -7,15 +7,17 @@ A lightweight, responsive web application built with Python, Flask, and Semantic
 * **Track Subject Lifecycle:** Log individual subjects (e.g., "Person Properties") and monitor their progress through a queue.
 * **Timestamp Recording:** Automatically captures the current time for `arrive_time`, `start_time`, and `fin_time` at each stage.
 * **Clean User Interface:** Utilizes Semantic UI via CDN for a modern, responsive, and mobile-friendly dashboard without the need for custom CSS.
-* **SQLite Database:** Uses Flask-SQLAlchemy for lightweight, local data storage.
+* **Built-in Automatic Database Initialization:** Automatically creates the SQLite database and `todo` table upon startup without needing manual setup commands.
+* **Multi-Database Management:** Manage multiple database files directly from the UI—create new databases for different shifts/observations, switch between them instantly, or delete unused ones.
+* **One-Click CSV Export:** Export observation data directly through the browser without needing external `sqlite3` CLI tools installed.
 * **Network Accessible:** Runs on `0.0.0.0`, allowing the app to be accessed by other devices on your local network (like a tablet or phone used for observation).
 
 ## Prerequisites
 
-Make sure you have Python installed. You will also need to install the required Python packages.
+Make sure you have Python installed. You will also need Flask:
 
 ```bash
-pip install Flask Flask-SQLAlchemy
+pip install Flask
 ```
 
 ## Project Structure
@@ -26,24 +28,17 @@ Ensure your project directory is organized as follows:
 /your_project_folder
 │
 ├── app.py               # The main Flask application
-└── /templates           # Folder containing your HTML files
-    └── base.html        # The Semantic UI dashboard template
+├── config.json          # Configuration storing the active database setting
+├── /instance            # Folder containing your SQLite database files
+│   └── db2.sqlite       # Default SQLite database
+└── /templates           # Folder containing your HTML templates
+    ├── base.html        # Main dashboard and navigation template
+    └── config.html      # Database configuration and management template
 ```
 
-## Setup & Initialization
+## Setup & Running the Application
 
-Before running the app for the first time, you must initialize the SQLite database (`db2.sqlite`). 
-
-Open your terminal, navigate to your project folder, and open the Python interactive shell to create the database:
-
-```python
-from app import app, db
-with app.app_context():
-    db.create_all()
-```
-This will generate the `db2.sqlite` file with the required `Todo` table schema.
-
-## Running the Application
+The database and table schemas are initialized automatically when the app starts.
 
 Start the Flask development server by running:
 
@@ -63,13 +58,15 @@ The application will start in debug mode. You can access the dashboard in your w
 | `POST` | `/add` | Captures the subject's properties from the form, logs the `arrive_time`, and adds them to the queue. |
 | `GET` | `/start/<id>` | Updates the `start_time` of the specified subject to the current time. |
 | `GET` | `/finish/<id>` | Updates the `fin_time` of the specified subject to the current time. |
+| `GET` | `/export` | Generates and downloads a CSV file containing all observation records from the active database. |
+| `GET` | `/config` | Renders the database configuration page to create, switch, and delete databases. |
+| `POST` | `/config/set` | Sets the selected database file as active. |
+| `POST` | `/config/create` | Creates a new SQLite database file and initializes its tables. |
+| `POST` | `/config/delete` | Deletes a specified inactive SQLite database file. |
 
 ## Exporting Observation Data
 
-To analyze your queue metrics (such as calculating average wait times or service times), you can export the SQLite database directly to a CSV file.
+You can export your observation metrics (to calculate wait times, service times, etc.) in two ways:
 
-Open your terminal or command prompt and run the following SQLite command (adjust the path to match your actual database location):
-
-```bash
-sqlite3 -header -csv c:/sqlite/db2.sqlite "select * from todo;" > todo.csv
-```
+1. **Directly from the Dashboard:** Click the **"Export CSV"** button in the navigation bar, which automatically triggers a download of `<database_name>.csv`.
+2. **Via Endpoint:** Visit `http://127.0.0.1:5000/export` in your browser.
