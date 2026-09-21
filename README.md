@@ -1,72 +1,124 @@
 # Queue Observation App
 
-A lightweight, responsive web application built with Python, Flask, and Semantic UI. This tool is designed to observe and track the lifecycle of subjects in a queue by recording precise timestamps for when a subject arrives, when their service begins, and when their service is completed.
+A modern, high-precision queue observation and time-study web application built with **Python**, **Flask**, **Tailwind CSS**, and **Lucide Icons**. 
+
+This application is designed to conduct real-world queue timing observations (e.g., bank tellers, customer service desks, triage, point-of-sale stations, and industrial engineering time studies). It separates the operational **Live Observation Counter** from the high-level **Analytics Dashboard** to provide distraction-free real-time timing in the field alongside comprehensive performance analytics.
+
+---
 
 ## Features
 
-* **Track Subject Lifecycle:** Log individual subjects (e.g., "Person Properties") and monitor their progress through a queue.
-* **Timestamp Recording:** Automatically captures the current time for `arrive_time`, `start_time`, and `fin_time` at each stage.
-* **Clean User Interface:** Utilizes Semantic UI via CDN for a modern, responsive, and mobile-friendly dashboard without the need for custom CSS.
-* **Built-in Automatic Database Initialization:** Automatically creates the SQLite database and `todo` table upon startup without needing manual setup commands.
-* **Multi-Database Management:** Manage multiple database files directly from the UI—create new databases for different shifts/observations, switch between them instantly, or delete unused ones.
-* **One-Click CSV Export:** Export observation data directly through the browser without needing external `sqlite3` CLI tools installed.
-* **Network Accessible:** Runs on `0.0.0.0`, allowing the app to be accessed by other devices on your local network (like a tablet or phone used for observation).
+* **Real-Time Observation Counter (`/counter`):**
+  * **Live Ticking Service Stopwatch:** A prominent digital timer displaying elapsed service time in real-time (`HH:MM:SS`) for the subject currently at the station.
+  * **1-Click "Finish & Call Next":** Atomically completes the current subject's service and immediately starts timing the next waiting person with zero observational delay.
+  * **Rapid Arrival Logging:** Quick-add input with auto-numbering fallback (`Subject #N`) and `Enter`-key support for rapid logging.
+  * **FIFO Waiting Queue:** Real-time queue view showing how long each waiting subject has been in line (`Waiting: 2m 14s`) with quick Start and Cancel buttons.
+  * **Zero-Reload Smooth AJAX:** All counter actions update asynchronously via background API requests, keeping the stopwatches ticking smoothly without page reloads.
+  * **Recently Completed Feed:** Real-time log of recently finished observations with instant wait and service duration badges.
+
+* **Analytics Dashboard (`/`):**
+  * **Queue Efficiency Metrics:** Overview cards displaying total observations, current queue length, **Average Wait Time**, **Average Service Duration**, and **Average Total Queue Time** (Wait + Service).
+  * **Active Station Status Banner:** Real-time indicator showing if the counter is currently serving a subject, with a quick shortcut to the live counter.
+  * **Searchable & Filterable Records Table:** Chronological log of all subjects, timestamps, and calculated duration metrics. Includes instant client-side search and status filter tabs (`All`, `Waiting`, `In Service`, `Completed`).
+
+* **Modern UI & Left Sidebar Navigation:**
+  * Clean **Tailwind CSS** and **Lucide Icons** interface styled in a modern Indigo & Slate aesthetic.
+  * Fixed desktop left sidebar with active database status indicator, quick navigation tabs, and a mobile slide-out drawer for smartphone/tablet field observation.
+
+* **Multi-Database Management (`/config`):**
+  * Create, switch, and delete individual SQLite database files directly from the UI (ideal for tracking separate shifts, days, or counter locations).
+  * Auto-initializes SQLite database schemas upon creation or startup.
+
+* **One-Click CSV Export:**
+  * Download observation records from the active database directly as a `.csv` file for external statistical modeling or reporting in Excel, R, or Python.
+
+* **Network Accessible:**
+  * Runs on `0.0.0.0:5000`, enabling observation from mobile phones, tablets, or laptops over the local Wi-Fi network.
+
+---
 
 ## Prerequisites
 
-Make sure you have Python installed. You will also need Flask:
+* Python 3.8+
+* Flask (see `requirements.txt`)
+
+To install dependencies:
 
 ```bash
-pip install Flask
+pip install -r requirements.txt
 ```
+
+---
 
 ## Project Structure
 
-Ensure your project directory is organized as follows:
-
 ```text
-/your_project_folder
+QueueObservation/
 │
-├── app.py               # The main Flask application
+├── app.py               # Main Flask application, routes, and duration math engine
 ├── config.json          # Configuration storing the active database setting
-├── /instance            # Folder containing your SQLite database files
+├── requirements.txt     # Python dependencies
+├── README.md            # Application documentation
+├── instance/            # SQLite database storage directory
 │   └── db2.sqlite       # Default SQLite database
-└── /templates           # Folder containing your HTML templates
-    ├── base.html        # Main dashboard and navigation template
-    └── config.html      # Database configuration and management template
+└── templates/           # Jinja2 HTML templates
+    ├── base.html        # Main layout shell with left sidebar, mobile header & alerts
+    ├── counter.html     # High-precision Observation Counter with live stopwatches
+    ├── index.html       # Analytics Dashboard, metric cards & searchable records table
+    └── config.html      # Database configuration and session management
 ```
+
+---
 
 ## Setup & Running the Application
 
 The database and table schemas are initialized automatically when the app starts.
 
-Start the Flask development server by running:
+Start the Flask development server:
 
 ```bash
 python app.py
 ```
 
-The application will start in debug mode. You can access the dashboard in your web browser at:
+The application will start on port `5000`:
 * **Local Machine:** `http://127.0.0.1:5000`
-* **Local Network:** `http://<your-local-ip-address>:5000` (Useful for observing on a mobile device)
+* **Local Network:** `http://<your-local-ip-address>:5000` (Open this on your mobile tablet/phone for field observation)
+
+---
+
+## Application Views & Navigation
+
+| Screen | Route | Description |
+| :--- | :--- | :--- |
+| **Live Counter** | `/counter` | Dedicated real-time observation console with live ticking stopwatches, FIFO line, and 1-click progression. |
+| **Analytics Dashboard** | `/` | Queue performance metrics, averages (wait, service, total), and searchable observation records log. |
+| **Database Config** | `/config` | Manage session databases, switch active observation shift, or create new SQLite files. |
+
+---
 
 ## Application Endpoints
 
 | Method | Route | Description |
 | :--- | :--- | :--- |
-| `GET` | `/` | Renders the main dashboard (`base.html`) and displays all queued subjects. |
-| `POST` | `/add` | Captures the subject's properties from the form, logs the `arrive_time`, and adds them to the queue. |
-| `GET` | `/start/<id>` | Updates the `start_time` of the specified subject to the current time. |
-| `GET` | `/finish/<id>` | Updates the `fin_time` of the specified subject to the current time. |
-| `GET` | `/export` | Generates and downloads a CSV file containing all observation records from the active database. |
-| `GET` | `/config` | Renders the database configuration page to create, switch, and delete databases. |
-| `POST` | `/config/set` | Sets the selected database file as active. |
-| `POST` | `/config/create` | Creates a new SQLite database file and initializes its tables. |
-| `POST` | `/config/delete` | Deletes a specified inactive SQLite database file. |
+| `GET` | `/` | Renders the Analytics Dashboard with summary metrics, averages, and the records table. |
+| `GET` | `/counter` | Renders the dedicated Observation Counter console. |
+| `GET` | `/api/state` | Returns the live counter state as JSON (active subject, waiting queue, completed list, stats). |
+| `POST` | `/add` | Logs an arrival timestamp. Auto-generates subject title if left blank. Supports both AJAX and form submission. |
+| `GET` / `POST` | `/start/<id>` | Records the `start_time` for the specified subject. |
+| `GET` / `POST` | `/finish/<id>` | Records the `fin_time` for the specified subject. |
+| `GET` / `POST` | `/finish_and_next/<id>` | Completes the current subject and immediately starts the next waiting subject in queue. |
+| `GET` / `POST` | `/delete/<id>` | Removes an accidental queue entry without polluting dataset statistics. |
+| `GET` | `/export` | Generates and downloads a CSV export of all observations from the active database. |
+| `GET` | `/config` | Renders the database configuration view. |
+| `POST` | `/config/set` | Switches the active SQLite database. |
+| `POST` | `/config/create` | Creates and initializes a new SQLite database file. |
+| `POST` | `/config/delete` | Deletes an inactive SQLite database file. |
+
+---
 
 ## Exporting Observation Data
 
-You can export your observation metrics (to calculate wait times, service times, etc.) in two ways:
+You can export your observation metrics (including arrival time, service start time, and completion time) at any time:
 
-1. **Directly from the Dashboard:** Click the **"Export CSV"** button in the navigation bar, which automatically triggers a download of `<database_name>.csv`.
-2. **Via Endpoint:** Visit `http://127.0.0.1:5000/export` in your browser.
+1. **Via Sidebar / Navigation:** Click the **"Export CSV"** button located at the bottom of the left sidebar or at the top of the dashboard.
+2. **Direct Download URL:** Visit `http://127.0.0.1:5000/export` in your browser.

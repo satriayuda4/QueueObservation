@@ -2,95 +2,222 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Queue Observation App</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+    <title>{% block title %}Queue Observation{% endblock %}</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Smooth custom transitions */
+        .sidebar-transition {
+            transition: transform 0.25s ease-in-out;
+        }
+    </style>
 </head>
-<body>
-    <div style="margin-top: 30px; margin-bottom: 50px;" class="ui container">
-        
-        <!-- Navigation Menu -->
-        <div class="ui stackable menu">
-            <a class="header item" href="{{ url_for('index') }}">
-                <i class="clock outline icon"></i> Queue Observation
-            </a>
-            <a class="item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
-                <i class="list icon"></i> Dashboard
-            </a>
-            <a class="item {% if request.endpoint == 'config_page' %}active{% endif %}" href="{{ url_for('config_page') }}">
-                <i class="database icon"></i> Database Config
-            </a>
-            <div class="right menu">
-                <div class="item">
-                    <span class="ui teal label" title="Current Active Database">
-                        <i class="hdd outline icon"></i> {{ active_db }}
-                    </span>
-                </div>
-                <a class="item" href="{{ url_for('export') }}">
-                    <i class="download icon"></i> Export CSV
-                </a>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <!-- Mobile Header (Visible on small screens) -->
+    <header class="lg:hidden bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+                <i data-lucide="timer" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <span class="font-bold text-slate-900 text-base">Queue Observation</span>
             </div>
         </div>
+        <button id="mobile-toggle-btn" class="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:outline-none" aria-label="Toggle Navigation">
+            <i data-lucide="menu" id="menu-icon" class="w-6 h-6"></i>
+        </button>
+    </header>
 
-        <!-- Flashed Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="ui message {% if category == 'error' %}negative{% elif category == 'success' %}positive{% elif category == 'warning' %}warning{% else %}info{% endif %}">
-                        <i class="close icon" onclick="this.parentElement.style.display='none';"></i>
-                        {{ message }}
+    <!-- Mobile Overlay Backdrop -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar-transition fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between -translate-x-full lg:translate-x-0">
+            <!-- Top brand & navigation links -->
+            <div>
+                <!-- Brand logo -->
+                <div class="h-16 px-6 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-700 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+                            <i data-lucide="timer" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-slate-900 text-base leading-tight">Queue Obs.</h1>
+                            <p class="text-[11px] font-medium text-slate-400">Queue Time Tracker</p>
+                        </div>
                     </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% block content %}
-        <h1 style="margin-top: 20px;" class="ui center aligned header">Queue Observation App</h1>
-        
-        <form class="ui form" action="{{ url_for('add') }}" method="POST">
-            <div class="field">
-                <label for="title">Add Subject</label>        
-                <div class="ui fluid action input">
-                    <input type="text" name="title" placeholder="Person Properties" required autofocus>
-                    <button class="ui blue button" type="submit">
-                        <i class="plus icon"></i> Add
+                    <!-- Close button for mobile -->
+                    <button id="mobile-close-btn" class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                        <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
+
+                <!-- Navigation items -->
+                <div class="px-3 py-5 space-y-1.5">
+                    <div class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                        Menu
+                    </div>
+
+                    <a href="{{ url_for('counter') }}" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.endpoint == 'counter' %}bg-indigo-50 text-indigo-700 shadow-sm font-semibold{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                        <div class="flex items-center space-x-3">
+                            <i data-lucide="timer" class="w-4 h-4 {% if request.endpoint == 'counter' %}text-indigo-600{% else %}text-slate-400{% endif %}"></i>
+                            <span>Live Counter</span>
+                        </div>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Observation Live"></span>
+                    </a>
+
+                    <a href="{{ url_for('index') }}" class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.endpoint == 'index' %}bg-indigo-50 text-indigo-700 shadow-sm font-semibold{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 {% if request.endpoint == 'index' %}text-indigo-600{% else %}text-slate-400{% endif %}"></i>
+                        <span>Analytics Dashboard</span>
+                    </a>
+
+                    <a href="{{ url_for('config_page') }}" class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.endpoint == 'config_page' %}bg-indigo-50 text-indigo-700 shadow-sm font-semibold{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                        <i data-lucide="database" class="w-4 h-4 {% if request.endpoint == 'config_page' %}text-indigo-600{% else %}text-slate-400{% endif %}"></i>
+                        <span>Database Config</span>
+                    </a>
+
+                </div>
             </div>
-        </form>
 
-        {% if not todo_list %}
-        <div class="ui placeholder segment center aligned" style="margin-top: 30px;">
-            <div class="ui icon header">
-                <i class="users icon"></i>
-                No subjects currently in this observation queue.
-            </div>
-            <p>Add a subject above to begin observing.</p>
-        </div>
-        {% endif %}
+            <!-- Bottom utility & active database badge -->
+            <div class="p-4 border-t border-slate-100 space-y-3">
+                <!-- Active Database Card -->
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+                        <span class="flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Active Database</span>
+                        </span>
+                        <a href="{{ url_for('config_page') }}" class="text-indigo-600 hover:text-indigo-700 text-[11px] font-semibold">Change</a>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-800 font-semibold text-xs truncate">
+                        <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                        <span class="truncate" title="{{ active_db }}">{{ active_db }}</span>
+                    </div>
+                </div>
 
-        {% for todo in todo_list %}
-        <div class="ui segment">
-            <p class="ui big header"> #{{ todo.id }} | {{ todo.title }} </p>
-            <p class="content"><strong>Arrive time :</strong> {{ todo.arrive_time if todo.arrive_time else '-' }} </p>
-            <p class="content"><strong>Start time :</strong> {{ todo.start_time if todo.start_time else '-' }} </p>
-            <p class="content"><strong>Finish time :</strong> {{ todo.fin_time if todo.fin_time else '-' }} </p>
-
-            <div class="ui buttons">
-                <a class="ui blue button" href="{{ url_for('start', todo_id=todo.id) }}">
-                    <i class="play icon"></i> Start
+                <!-- Export CSV Button -->
+                <a href="{{ url_for('export') }}" class="flex items-center justify-center space-x-2 w-full px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-medium text-sm rounded-xl border border-slate-200 shadow-sm transition-all hover:border-slate-300">
+                    <i data-lucide="download" class="w-4 h-4 text-slate-500"></i>
+                    <span>Export CSV</span>
                 </a>
-                <a class="ui green button" href="{{ url_for('finish', todo_id=todo.id) }}">
-                    <i class="check icon"></i> Finish
-                </a>
             </div>
-        </div>
-        {% endfor %}
-        {% endblock %}
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 lg:pl-64 flex flex-col min-w-0">
+            <div class="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+                <!-- Flash Notification Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="space-y-3 mb-6">
+                            {% for category, message in messages %}
+                                <div class="flex items-center justify-between p-4 rounded-xl border text-sm font-medium transition-all shadow-sm
+                                    {% if category == 'error' %}
+                                        bg-rose-50 border-rose-200 text-rose-800
+                                    {% elif category == 'success' %}
+                                        bg-emerald-50 border-emerald-200 text-emerald-800
+                                    {% elif category == 'warning' %}
+                                        bg-amber-50 border-amber-200 text-amber-800
+                                    {% else %}
+                                        bg-indigo-50 border-indigo-200 text-indigo-800
+                                    {% endif %}
+                                ">
+                                    <div class="flex items-center space-x-3">
+                                        {% if category == 'error' %}
+                                            <i data-lucide="alert-circle" class="w-5 h-5 text-rose-500 shrink-0"></i>
+                                        {% elif category == 'success' %}
+                                            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500 shrink-0"></i>
+                                        {% elif category == 'warning' %}
+                                            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500 shrink-0"></i>
+                                        {% else %}
+                                            <i data-lucide="info" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+                                        {% endif %}
+                                        <span>{{ message }}</span>
+                                    </div>
+                                    <button type="button" onclick="this.closest('div').remove()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-black/5" aria-label="Dismiss alert">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Main View Content -->
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
+
+    <!-- Client-side Scripts -->
+    <script>
+        // Initialize Lucide Icons
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+
+            // Mobile sidebar drawer handling
+            const toggleBtn = document.getElementById('mobile-toggle-btn');
+            const closeBtn = document.getElementById('mobile-close-btn');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+
+            if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+            if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+            if (overlay) overlay.addEventListener('click', closeSidebar);
+        });
+    </script>
 </body>
 </html>

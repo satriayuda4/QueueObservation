@@ -1,0 +1,669 @@
+{% extends 'base.html' %}
+
+{% block title %}Observation Counter · Queue Observation{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 gap-3">
+    <div>
+        <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider">
+                Live Console
+            </span>
+            <span id="active-db-badge" class="inline-flex items-center text-xs font-medium text-slate-500">
+                <i data-lucide="hard-drive" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>
+                {{ active_db }}
+            </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-1">Observation Counter</h1>
+        <p class="text-xs sm:text-sm text-slate-500">High-precision real-time queue timer and rapid station controller.</p>
+    </div>
+
+    <!-- Quick Actions / Mode Links -->
+    <div class="flex items-center space-x-2">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center space-x-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 shadow-sm transition-all">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 text-slate-500"></i>
+            <span>View Analytics</span>
+        </a>
+    </div>
+</div>
+
+<!-- Two-Zone Counter Console Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT ZONE (7 cols): Active Counter Station & Recent Activity -->
+    <div class="lg:col-span-7 xl:col-span-7 space-y-6">
+
+        <!-- Active Station Focus Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden" id="active-station-card">
+            <!-- Card Header -->
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-3 h-3 rounded-full {% if active_subject %}bg-emerald-500 animate-pulse{% else %}bg-amber-400{% endif %}" id="station-status-dot"></div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-700" id="station-status-label">
+                        {% if active_subject %}Station In Service{% else %}Station Idle / Ready{% endif %}
+                    </span>
+                </div>
+                <div class="text-xs font-mono text-slate-400" id="clock-display">
+                    --:--:--
+                </div>
+            </div>
+
+            <!-- Focus Content -->
+            <div class="p-6 text-center">
+                {% if active_subject %}
+                    <div id="active-subject-view" class="space-y-4">
+                        <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                            <span class="w-2 h-2 rounded-full bg-sky-500 mr-1.5 animate-pulse"></span>
+                            Currently Serving Subject #{{ active_subject.id }}
+                        </div>
+
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight" id="active-subject-title">
+                            {{ active_subject.title }}
+                        </h2>
+
+                        <!-- Timestamps Subtitle -->
+                        <div class="flex items-center justify-center space-x-4 text-xs text-slate-500 font-medium">
+                            <span title="Arrival Timestamp">
+                                <i data-lucide="log-in" class="w-3.5 h-3.5 inline text-slate-400 mr-1"></i>
+                                Arrived: <strong class="text-slate-700 font-mono">{{ active_subject.arrive_time }}</strong>
+                            </span>
+                            <span>•</span>
+                            <span title="Service Start Timestamp">
+                                <i data-lucide="play" class="w-3.5 h-3.5 inline text-sky-500 mr-1"></i>
+                                Started: <strong class="text-slate-700 font-mono" id="active-start-time">{{ active_subject.start_time }}</strong>
+                            </span>
+                            {% if active_subject.wait_duration %}
+                            <span>•</span>
+                            <span class="text-amber-700 font-semibold">
+                                Waited: {{ active_subject.wait_duration }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Big Digital Stopwatch -->
+                        <div class="py-4 my-2">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Elapsed Service Time</p>
+                            <div class="font-mono text-5xl sm:text-6xl font-black text-indigo-600 tracking-tight" id="active-stopwatch">
+                                00:00:00
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons for In-Service Subject -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            <!-- 1-Click Finish & Next -->
+                            <button 
+                                type="button" 
+                                onclick="handleFinishAndNext({{ active_subject.id }})" 
+                                class="w-full inline-flex items-center justify-center space-x-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-100 transition-all cursor-pointer"
+                            >
+                                <i data-lucide="fast-forward" class="w-4 h-4"></i>
+                                <span>Finish & Call Next</span>
+                            </button>
+
+                            <!-- Finish Service -->
+                            <button 
+                                type="button" 
+                                onclick="handleFinish({{ active_subject.id }})" 
+                                class="w-full inline-flex items-center justify-center space-x-2 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-100 transition-all cursor-pointer"
+                            >
+                                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                <span>Finish Service Only</span>
+                            </button>
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Idle Station State -->
+                    <div id="idle-station-view" class="py-6 space-y-4">
+                        <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-2">
+                            <i data-lucide="coffee" class="w-8 h-8"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">Station is Currently Idle</h2>
+                            <p class="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mt-1">
+                                {% if waiting_queue %}
+                                    There are <strong class="text-indigo-600">{{ waiting_queue|length }} subject(s)</strong> waiting in the queue.
+                                {% else %}
+                                    No subjects currently waiting. Record new arrivals in the side panel.
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <!-- Stopwatch Placeholder -->
+                        <div class="py-2">
+                            <div class="font-mono text-4xl sm:text-5xl font-bold text-slate-300 tracking-tight">
+                                00:00:00
+                            </div>
+                        </div>
+
+                        <!-- Call Next Button (if queue has someone) -->
+                        <div class="pt-2 max-w-sm mx-auto">
+                            {% if waiting_queue %}
+                                <button 
+                                    type="button" 
+                                    onclick="handleStart({{ waiting_queue[0].id }})" 
+                                    class="w-full inline-flex items-center justify-center space-x-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-100 transition-all cursor-pointer"
+                                >
+                                    <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                                    <span>Call Next: #{{ waiting_queue[0].id }} ({{ waiting_queue[0].title }})</span>
+                                </button>
+                            {% else %}
+                                <div class="inline-flex items-center px-4 py-2 bg-slate-50 text-slate-500 text-xs font-medium rounded-xl border border-slate-200">
+                                    <i data-lucide="info" class="w-4 h-4 mr-2 text-slate-400"></i>
+                                    Record an arrival on the right to start
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recently Completed Observations Feed -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="check-check" class="w-4 h-4 text-emerald-600"></i>
+                    <h3 class="text-sm font-bold text-slate-900">Recently Completed Subjects</h3>
+                </div>
+                <span class="text-xs text-slate-400 font-medium" id="completed-count-label">
+                    {{ stats.completed }} total completed
+                </span>
+            </div>
+
+            <div class="divide-y divide-slate-100" id="completed-feed">
+                {% if completed_recent %}
+                    {% for item in completed_recent %}
+                    <div class="py-3 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5 truncate pr-2">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-700 font-bold text-[10px]">
+                                #{{ item.id }}
+                            </span>
+                            <span class="font-semibold text-slate-800 truncate" title="{{ item.title }}">{{ item.title }}</span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            {% if item.wait_duration %}
+                            <span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-medium border border-amber-200/60" title="Wait Duration">
+                                Wait: {{ item.wait_duration }}
+                            </span>
+                            {% endif %}
+                            {% if item.service_duration %}
+                            <span class="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-bold border border-sky-200/60" title="Service Duration">
+                                Svc: {{ item.service_duration }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="py-6 text-center text-xs text-slate-400">
+                        No completed observations recorded in this session yet.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT ZONE (5 cols): Waiting Queue & Rapid Arrival Bar -->
+    <div class="lg:col-span-5 xl:col-span-5 space-y-6">
+
+        <!-- Rapid Arrival Box -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5">
+            <div class="flex items-center space-x-2 mb-3">
+                <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                </div>
+                <h3 class="text-sm font-bold text-slate-900">Record New Arrival</h3>
+            </div>
+
+            <form id="arrival-form" onsubmit="handleArrivalSubmit(event)" class="space-y-3">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="arrival-input" 
+                        name="title" 
+                        placeholder="Subject name or properties (Leave blank for auto-number)..."
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-inner"
+                        autofocus
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    class="w-full inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 active:bg-black text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Log Arrival (Enter)</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Waiting Queue List -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="hourglass" class="w-4 h-4 text-amber-500"></i>
+                    <h3 class="text-sm font-bold text-slate-900">Waiting Line (FIFO)</h3>
+                </div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200" id="queue-count-badge">
+                    {{ waiting_queue|length }} in line
+                </span>
+            </div>
+
+            <!-- Queue Items Container -->
+            <div class="space-y-2.5" id="waiting-queue-list">
+                {% if waiting_queue %}
+                    {% for item in waiting_queue %}
+                    <div class="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-white hover:border-slate-300 transition-all flex flex-col gap-2" id="queue-item-{{ item.id }}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 truncate">
+                                <span class="w-5 h-5 rounded bg-slate-200 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                    {{ loop.index }}
+                                </span>
+                                <span class="font-bold text-xs text-slate-900 truncate" title="{{ item.title }}">
+                                    #{{ item.id }} · {{ item.title }}
+                                </span>
+                            </div>
+
+                            <!-- Live Ticking Wait Duration -->
+                            <span class="text-[11px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 queue-timer" data-arrive="{{ item.arrive_time }}">
+                                Waiting...
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1 text-[11px] text-slate-500 border-t border-slate-100">
+                            <span>Arrived: <strong class="font-mono text-slate-700">{{ item.arrive_time }}</strong></span>
+                            
+                            <div class="flex items-center space-x-1.5">
+                                <button 
+                                    type="button" 
+                                    onclick="handleStart({{ item.id }})" 
+                                    class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all cursor-pointer"
+                                    title="Start service for this subject"
+                                >
+                                    Start
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onclick="handleDelete({{ item.id }})" 
+                                    class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                                    title="Remove accidental entry"
+                                >
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="py-8 text-center text-xs text-slate-400" id="empty-queue-message">
+                        No subjects waiting in queue right now.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Real-time Timing & AJAX Controller Script -->
+<script>
+    // System Clock Display
+    function updateClock() {
+        const now = new Date();
+        const str = now.toTimeString().split(' ')[0];
+        const clockEl = document.getElementById('clock-display');
+        if (clockEl) clockEl.textContent = str;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Parse HH:MM:SS to today Date object
+    function parseTimeString(timeStr) {
+        if (!timeStr) return null;
+        const parts = timeStr.split(':');
+        if (parts.length < 3) return null;
+        const d = new Date();
+        d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10), 0);
+        return d;
+    }
+
+    // Format seconds to HH:MM:SS
+    function formatElapsed(totalSeconds) {
+        if (totalSeconds < 0) totalSeconds = 0;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return [
+            hours.toString().padStart(2, '0'),
+            minutes.toString().padStart(2, '0'),
+            seconds.toString().padStart(2, '0')
+        ].join(':');
+    }
+
+    // Live Tickers
+    function tickStopwatches() {
+        const now = new Date();
+
+        // 1. Active Station Service Stopwatch
+        const activeStartEl = document.getElementById('active-start-time');
+        const activeStopwatchEl = document.getElementById('active-stopwatch');
+        if (activeStartEl && activeStopwatchEl) {
+            const startTimeStr = activeStartEl.textContent.trim();
+            const startDate = parseTimeString(startTimeStr);
+            if (startDate) {
+                let diffSec = Math.floor((now - startDate) / 1000);
+                if (diffSec < 0) diffSec += 86400;
+                activeStopwatchEl.textContent = formatElapsed(diffSec);
+            }
+        }
+
+        // 2. Waiting Queue Timers
+        document.querySelectorAll('.queue-timer').forEach(el => {
+            const arriveStr = el.getAttribute('data-arrive');
+            const arriveDate = parseTimeString(arriveStr);
+            if (arriveDate) {
+                let diffSec = Math.floor((now - arriveDate) / 1000);
+                if (diffSec < 0) diffSec += 86400;
+                const m = Math.floor(diffSec / 60);
+                const s = diffSec % 60;
+                el.textContent = `${m}m ${s}s`;
+            }
+        });
+    }
+    setInterval(tickStopwatches, 1000);
+    tickStopwatches();
+
+    // AJAX Action Helpers
+    async function apiPost(url, data = {}) {
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(data)
+            });
+            if (resp.ok) {
+                // Refresh state smoothly
+                await syncState();
+            } else {
+                console.error('API call failed:', resp.statusText);
+            }
+        } catch (err) {
+            console.error('Network error during API call:', err);
+        }
+    }
+
+    // Refresh entire counter state without page reload
+    async function syncState() {
+        try {
+            const resp = await fetch('/api/state', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            renderCounterState(data);
+        } catch (err) {
+            console.error('Failed to sync state:', err);
+        }
+    }
+
+    // Render updated state into the DOM
+    function renderCounterState(data) {
+        const { active_subject, waiting_queue, completed_recent, stats } = data;
+
+        // Render Active Station Card
+        const stationCard = document.getElementById('active-station-card');
+        const statusDot = document.getElementById('station-status-dot');
+        const statusLabel = document.getElementById('station-status-label');
+
+        if (active_subject) {
+            if (statusDot) {
+                statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500 animate-pulse';
+            }
+            if (statusLabel) {
+                statusLabel.textContent = 'Station In Service';
+            }
+
+            const nextWaitingId = waiting_queue.length > 0 ? waiting_queue[0].id : null;
+
+            stationCard.querySelector('.p-6').innerHTML = `
+                <div id="active-subject-view" class="space-y-4">
+                    <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                        <span class="w-2 h-2 rounded-full bg-sky-500 mr-1.5 animate-pulse"></span>
+                        Currently Serving Subject #${active_subject.id}
+                    </div>
+
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight" id="active-subject-title">
+                        ${escapeHtml(active_subject.title)}
+                    </h2>
+
+                    <div class="flex items-center justify-center space-x-4 text-xs text-slate-500 font-medium">
+                        <span>
+                            <i data-lucide="log-in" class="w-3.5 h-3.5 inline text-slate-400 mr-1"></i>
+                            Arrived: <strong class="text-slate-700 font-mono">${active_subject.arrive_time || '—'}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                            <i data-lucide="play" class="w-3.5 h-3.5 inline text-sky-500 mr-1"></i>
+                            Started: <strong class="text-slate-700 font-mono" id="active-start-time">${active_subject.start_time || '—'}</strong>
+                        </span>
+                        ${active_subject.wait_duration ? `
+                        <span>•</span>
+                        <span class="text-amber-700 font-semibold">
+                            Waited: ${active_subject.wait_duration}
+                        </span>` : ''}
+                    </div>
+
+                    <div class="py-4 my-2">
+                        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Elapsed Service Time</p>
+                        <div class="font-mono text-5xl sm:text-6xl font-black text-indigo-600 tracking-tight" id="active-stopwatch">
+                            00:00:00
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <button 
+                            type="button" 
+                            onclick="handleFinishAndNext(${active_subject.id})" 
+                            class="w-full inline-flex items-center justify-center space-x-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-100 transition-all cursor-pointer"
+                        >
+                            <i data-lucide="fast-forward" class="w-4 h-4"></i>
+                            <span>Finish & Call Next</span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            onclick="handleFinish(${active_subject.id})" 
+                            class="w-full inline-flex items-center justify-center space-x-2 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-100 transition-all cursor-pointer"
+                        >
+                            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                            <span>Finish Service Only</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            if (statusDot) {
+                statusDot.className = 'w-3 h-3 rounded-full bg-amber-400';
+            }
+            if (statusLabel) {
+                statusLabel.textContent = 'Station Idle / Ready';
+            }
+
+            const hasWaiting = waiting_queue.length > 0;
+            const nextItem = hasWaiting ? waiting_queue[0] : null;
+
+            stationCard.querySelector('.p-6').innerHTML = `
+                <div id="idle-station-view" class="py-6 space-y-4">
+                    <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-2">
+                        <i data-lucide="coffee" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Station is Currently Idle</h2>
+                        <p class="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mt-1">
+                            ${hasWaiting 
+                                ? `There are <strong class="text-indigo-600">${waiting_queue.length} subject(s)</strong> waiting in the queue.` 
+                                : 'No subjects currently waiting. Record new arrivals in the side panel.'}
+                        </p>
+                    </div>
+
+                    <div class="py-2">
+                        <div class="font-mono text-4xl sm:text-5xl font-bold text-slate-300 tracking-tight">
+                            00:00:00
+                        </div>
+                    </div>
+
+                    <div class="pt-2 max-w-sm mx-auto">
+                        ${hasWaiting ? `
+                            <button 
+                                type="button" 
+                                onclick="handleStart(${nextItem.id})" 
+                                class="w-full inline-flex items-center justify-center space-x-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-100 transition-all cursor-pointer"
+                            >
+                                <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                                <span>Call Next: #${nextItem.id} (${escapeHtml(nextItem.title)})</span>
+                            </button>
+                        ` : `
+                            <div class="inline-flex items-center px-4 py-2 bg-slate-50 text-slate-500 text-xs font-medium rounded-xl border border-slate-200">
+                                <i data-lucide="info" class="w-4 h-4 mr-2 text-slate-400"></i>
+                                Record an arrival on the right to start
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render Waiting Queue
+        const queueBadge = document.getElementById('queue-count-badge');
+        if (queueBadge) queueBadge.textContent = `${waiting_queue.length} in line`;
+
+        const queueList = document.getElementById('waiting-queue-list');
+        if (queueList) {
+            if (waiting_queue.length === 0) {
+                queueList.innerHTML = `<div class="py-8 text-center text-xs text-slate-400">No subjects waiting in queue right now.</div>`;
+            } else {
+                queueList.innerHTML = waiting_queue.map((item, idx) => `
+                    <div class="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-white hover:border-slate-300 transition-all flex flex-col gap-2" id="queue-item-${item.id}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 truncate">
+                                <span class="w-5 h-5 rounded bg-slate-200 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                    ${idx + 1}
+                                </span>
+                                <span class="font-bold text-xs text-slate-900 truncate" title="${escapeHtml(item.title)}">
+                                    #${item.id} · ${escapeHtml(item.title)}
+                                </span>
+                            </div>
+
+                            <span class="text-[11px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 queue-timer" data-arrive="${item.arrive_time}">
+                                Waiting...
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1 text-[11px] text-slate-500 border-t border-slate-100">
+                            <span>Arrived: <strong class="font-mono text-slate-700">${item.arrive_time}</strong></span>
+                            
+                            <div class="flex items-center space-x-1.5">
+                                <button 
+                                    type="button" 
+                                    onclick="handleStart(${item.id})" 
+                                    class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all cursor-pointer"
+                                    title="Start service for this subject"
+                                >
+                                    Start
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onclick="handleDelete(${item.id})" 
+                                    class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                                    title="Remove accidental entry"
+                                >
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Render Completed Feed
+        const completedFeed = document.getElementById('completed-feed');
+        const completedLabel = document.getElementById('completed-count-label');
+        if (completedLabel && stats) {
+            completedLabel.textContent = `${stats.completed} total completed`;
+        }
+        if (completedFeed && completed_recent) {
+            if (completed_recent.length === 0) {
+                completedFeed.innerHTML = `<div class="py-6 text-center text-xs text-slate-400">No completed observations recorded in this session yet.</div>`;
+            } else {
+                completedFeed.innerHTML = completed_recent.map(item => `
+                    <div class="py-3 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5 truncate pr-2">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-700 font-bold text-[10px]">
+                                #${item.id}
+                            </span>
+                            <span class="font-semibold text-slate-800 truncate" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            ${item.wait_duration ? `
+                                <span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-medium border border-amber-200/60" title="Wait Duration">
+                                    Wait: ${item.wait_duration}
+                                </span>` : ''}
+                            ${item.service_duration ? `
+                                <span class="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-bold border border-sky-200/60" title="Service Duration">
+                                    Svc: ${item.service_duration}
+                                </span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Re-initialize Lucide Icons and refresh timers
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+        tickStopwatches();
+    }
+
+    // Action Handlers
+    async function handleArrivalSubmit(event) {
+        event.preventDefault();
+        const input = document.getElementById('arrival-input');
+        const title = input.value.trim();
+        input.value = '';
+        input.focus();
+        await apiPost('/add', { title });
+    }
+
+    async function handleStart(todoId) {
+        await apiPost(`/start/${todoId}`);
+    }
+
+    async function handleFinish(todoId) {
+        await apiPost(`/finish/${todoId}`);
+    }
+
+    async function handleFinishAndNext(todoId) {
+        await apiPost(`/finish_and_next/${todoId}`);
+    }
+
+    async function handleDelete(todoId) {
+        if (confirm('Remove this subject from the queue?')) {
+            await apiPost(`/delete/${todoId}`);
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+</script>
+{% endblock %}

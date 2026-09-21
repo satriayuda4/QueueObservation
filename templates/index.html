@@ -1,0 +1,312 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics Dashboard · Queue Observation{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 gap-3">
+    <div>
+        <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider">
+                Analytics & Logs
+            </span>
+            <span class="inline-flex items-center text-xs font-medium text-slate-500">
+                <i data-lucide="hard-drive" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>
+                {{ active_db }}
+            </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-1">Analytics Dashboard</h1>
+        <p class="text-xs sm:text-sm text-slate-500">Queue performance indicators, wait/service time averages, and complete observation logs.</p>
+    </div>
+
+    <!-- Quick Link to Live Counter -->
+    <div class="flex items-center space-x-2.5">
+        <a href="{{ url_for('export') }}" class="inline-flex items-center space-x-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 shadow-sm transition-all">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Export CSV</span>
+        </a>
+        <a href="{{ url_for('counter') }}" class="inline-flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-100 transition-all">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <i data-lucide="timer" class="w-4 h-4"></i>
+            <span>Open Live Counter</span>
+        </a>
+    </div>
+</div>
+
+<!-- Active Station Callout Banner -->
+{% if active_subject %}
+<div class="bg-gradient-to-r from-indigo-500/10 via-sky-500/10 to-indigo-500/10 border border-indigo-200/80 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+    <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+        </div>
+        <div>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Station Currently Active</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            </div>
+            <p class="text-sm font-semibold text-slate-800">
+                Serving Subject <span class="font-bold text-indigo-700">#{{ active_subject.id }} ({{ active_subject.title }})</span> · Started at <span class="font-mono">{{ active_subject.start_time }}</span>
+            </p>
+        </div>
+    </div>
+    <a href="{{ url_for('counter') }}" class="inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all shrink-0">
+        <span>Go to Counter</span>
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+    </a>
+</div>
+{% endif %}
+
+<!-- Key Metrics & Averages Grid -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-8">
+    <!-- Card 1: Total Subjects -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Subjects</p>
+            <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <i data-lucide="users" class="w-4 h-4"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-black text-slate-900 mt-2">{{ stats.total }}</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">{{ stats.completed }} completed</p>
+    </div>
+
+    <!-- Card 2: Currently Waiting -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">In Line</p>
+            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i data-lucide="hourglass" class="w-4 h-4"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-black text-slate-900 mt-2">{{ stats.waiting }}</p>
+        <p class="text-[11px] text-amber-600 font-medium mt-0.5">Awaiting service</p>
+    </div>
+
+    <!-- Card 3: Avg Wait Time -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Avg Wait Time</p>
+            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-black text-slate-900 mt-2">{{ stats.avg_wait }}</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Queue delay</p>
+    </div>
+
+    <!-- Card 4: Avg Service Time -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Avg Service Time</p>
+            <div class="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                <i data-lucide="play-circle" class="w-4 h-4"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-black text-slate-900 mt-2">{{ stats.avg_service }}</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Station processing</p>
+    </div>
+
+    <!-- Card 5: Avg Total Time -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm col-span-2 sm:col-span-1">
+        <div class="flex items-center justify-between">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Avg Total Time</p>
+            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-black text-slate-900 mt-2">{{ stats.avg_total }}</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Wait + Service</p>
+    </div>
+</div>
+
+<!-- Observation Records Table Card -->
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+    <!-- Table Header & Controls -->
+    <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+        <div>
+            <h2 class="text-base font-bold text-slate-900">Observation Records Log</h2>
+            <p class="text-xs text-slate-500">Full chronology of observed subjects and recorded timestamps</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Search Input -->
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                </div>
+                <input 
+                    type="text" 
+                    id="table-search" 
+                    oninput="filterTable()" 
+                    placeholder="Search subject or ID..."
+                    class="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all w-44 sm:w-56"
+                >
+            </div>
+
+            <!-- Status Filter Buttons -->
+            <div class="inline-flex rounded-xl p-1 bg-slate-100 text-xs font-semibold text-slate-600">
+                <button type="button" onclick="setStatusFilter('all')" id="filter-all" class="px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm">
+                    All ({{ todo_list|length }})
+                </button>
+                <button type="button" onclick="setStatusFilter('waiting')" id="filter-waiting" class="px-2.5 py-1 rounded-lg hover:text-slate-900">
+                    Waiting ({{ stats.waiting }})
+                </button>
+                <button type="button" onclick="setStatusFilter('in_service')" id="filter-in_service" class="px-2.5 py-1 rounded-lg hover:text-slate-900">
+                    In Service ({{ stats.in_service }})
+                </button>
+                <button type="button" onclick="setStatusFilter('completed')" id="filter-completed" class="px-2.5 py-1 rounded-lg hover:text-slate-900">
+                    Completed ({{ stats.completed }})
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" id="records-table">
+            <thead>
+                <tr class="bg-slate-50/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">#ID</th>
+                    <th class="py-3 px-4">Subject</th>
+                    <th class="py-3 px-3">Status</th>
+                    <th class="py-3 px-3">Arrived</th>
+                    <th class="py-3 px-3">Started</th>
+                    <th class="py-3 px-3">Finished</th>
+                    <th class="py-3 px-3">Wait Time</th>
+                    <th class="py-3 px-3">Service Time</th>
+                    <th class="py-3 px-4 text-right">Total Duration</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-xs" id="table-body">
+                {% if todo_list %}
+                    {% for item in todo_list %}
+                    <tr class="table-row hover:bg-slate-50/70 transition-colors" data-status="{{ item.status }}" data-title="{{ item.title|lower }}" data-id="{{ item.id }}">
+                        <!-- ID -->
+                        <td class="py-3.5 px-4 font-bold text-slate-400">
+                            #{{ item.id }}
+                        </td>
+
+                        <!-- Subject Title -->
+                        <td class="py-3.5 px-4 font-bold text-slate-900 max-w-xs truncate">
+                            {{ item.title }}
+                        </td>
+
+                        <!-- Status Badge -->
+                        <td class="py-3.5 px-3">
+                            {% if item.status == 'waiting' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    Waiting
+                                </span>
+                            {% elif item.status == 'in_service' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                    In Service
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Completed
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Arrived -->
+                        <td class="py-3.5 px-3 font-mono text-slate-600">
+                            {{ item.arrive_time if item.arrive_time else '—' }}
+                        </td>
+
+                        <!-- Started -->
+                        <td class="py-3.5 px-3 font-mono text-slate-600">
+                            {{ item.start_time if item.start_time else '—' }}
+                        </td>
+
+                        <!-- Finished -->
+                        <td class="py-3.5 px-3 font-mono text-slate-600">
+                            {{ item.fin_time if item.fin_time else '—' }}
+                        </td>
+
+                        <!-- Wait Time -->
+                        <td class="py-3.5 px-3">
+                            {% if item.wait_duration %}
+                                <span class="font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                                    {{ item.wait_duration }}
+                                </span>
+                            {% else %}
+                                <span class="text-slate-300">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Service Time -->
+                        <td class="py-3.5 px-3">
+                            {% if item.service_duration %}
+                                <span class="font-semibold text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100">
+                                    {{ item.service_duration }}
+                                </span>
+                            {% else %}
+                                <span class="text-slate-300">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Total Duration -->
+                        <td class="py-3.5 px-4 text-right">
+                            {% if item.total_duration %}
+                                <span class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                    {{ item.total_duration }}
+                                </span>
+                            {% else %}
+                                <span class="text-slate-300">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="py-12 text-center text-slate-400">
+                            No observation data recorded in this database yet.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Client-side Search & Filter Script -->
+<script>
+    let currentStatus = 'all';
+
+    function setStatusFilter(status) {
+        currentStatus = status;
+        ['all', 'waiting', 'in_service', 'completed'].forEach(s => {
+            const btn = document.getElementById(`filter-${s}`);
+            if (btn) {
+                if (s === status) {
+                    btn.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm';
+                } else {
+                    btn.className = 'px-2.5 py-1 rounded-lg hover:text-slate-900 text-slate-600';
+                }
+            }
+        });
+        filterTable();
+    }
+
+    function filterTable() {
+        const query = (document.getElementById('table-search')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('.table-row');
+
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            const rowTitle = row.getAttribute('data-title');
+            const rowId = row.getAttribute('data-id');
+
+            const statusMatch = (currentStatus === 'all') || (rowStatus === currentStatus);
+            const textMatch = !query || rowTitle.includes(query) || rowId.includes(query);
+
+            if (statusMatch && textMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}
